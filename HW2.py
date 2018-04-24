@@ -3,16 +3,16 @@ import matplotlib.pyplot as plt
 import math
 import tensorflow as tf
 
-N = 10000
+N = 4000
 INPUT_SIZE = 2
 LABELS = 2
 BATCH_SIZE = 10
 HIDDEN_CELLS_1 = 10
 HIDDEN_CELLS_2 = 10
 SPLIT = [0.7, 0.2, 0.1]
-LR = 0.01
+LR = 0.1
 
-training_epochs = 100
+training_epochs = 1000
 display_step = 1
 
 def generateGuassian(mean, theta, lambd, num):
@@ -38,6 +38,9 @@ def one_hot_encode(np_array, num_label):
 	temp = (np.arange(num_label) == np_array[:,None]).astype(np.float32)
 	return temp
 
+def accuracy(pred, label):
+	return (100.0 * np.sum(np.argmax(pred, 1) == np.argmax(label, 1)) / pred.shape[0])
+
 def split_dataset(dataset, label, split):
 	training_set = np.array(dataset[:int(N * split[0]), :])
 	training_label = label[:int(N * split[0]), :]
@@ -57,7 +60,7 @@ def get_dataset(num):
 	lambd = [2, 1]
 	sample0, cov = generateGuassian(mean, theta, lambd, num)
 	print('Class0 cov = \n', cov)
-	Y0 = np.empty(N//2)
+	Y0 = np.empty(num)
 	Y0.fill(0)
 
 	# for Class1
@@ -75,7 +78,7 @@ def get_dataset(num):
 	sample1B, covB = generateGuassian(meanB, thetaB, lambdaB, round(num * piB))
 	print('Class1 covB = \n', covB)
 	sample1 = np.concatenate((sample1A, sample1B), axis = 0)
-	Y1 = np.empty(N//2)
+	Y1 = np.empty(num)
 	Y1.fill(1)
 
 	dataset = np.concatenate((sample0, sample1), axis = 0)
@@ -85,7 +88,7 @@ def get_dataset(num):
 def accuracy(pred, label):
 	return (np.sum(pred == label))
 # ---------------------------------- data processing -------------------------------------
-raw_dataset, raw_label = get_dataset(N)
+raw_dataset, raw_label = get_dataset(N // 2)
 dataset, label = reformat_data(raw_dataset, raw_label)
 training_set, training_label, validation_set, validation_label, test_set, test_label = split_dataset(dataset, label, SPLIT)
 
@@ -125,24 +128,28 @@ optimizer = tf.train.GradientDescentOptimizer(learning_rate= LR).minimize(loss)
 sess = tf.Session()
 init = tf.global_variables_initializer()
 
-sess.run(init)
 
-for epoch in range(training_epochs):
-	avg_cost = 0.0
-	total_batch = len(training_set) // BATCH_SIZE
-	X_batches = np.array_split(training_set, total_batch)
-	Y_batches = np.array_split(training_label, total_batch)
-	# Loop over all batches
-	for i in range(total_batch):
-		batch_x, batch_y = X_batches[i], Y_batches[i]
-		# Run optimization op (backprop) and cost op (to get loss value)
-		_, cost = sess.run([optimizer, loss], feed_dict={X: batch_x, Y: batch_y})
-		# Compute average loss
-		avg_cost += cost / total_batch
-		# Display logs per epoch step
-	if epoch % display_step == 0:
-		print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(avg_cost))
-print("Optimization Finished!")
+with tf.Session() as sess:
+	sess.run(init)
+	for epoch in range(training_epochs):
+		avg_cost = 0.0
+		total_batch = len(training_set) // BATCH_SIZE
+		X_batches = np.array_split(training_set, total_batch)
+		Y_batches = np.array_split(training_label, total_batch)
+		# Loop over all batches
+		for i in range(total_batch):
+			batch_x, batch_y = X_batches[i], Y_batches[i]
+			# Run optimization op (backprop) and cost op (to get loss value)
+			_, pred,cost = sess.run([optimizer, output_l, loss], feed_dict={X: batch_x, Y: batch_y})
+			# Compute average loss
+			avg_cost += cost / total_batch
+			# Display logs per epoch step
+			correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(Y, 1))
+			# Calculate accuracy
+			accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+		if epoch % display_step == 0:
+			print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.5f}".format(avg_cost))
+	print("Optimization Finished!")
 
 # for step in range(steps):
 # 	offset = (step * BATCH_SIZE) % (training_label.shape[0] - BATCH_SIZE)
