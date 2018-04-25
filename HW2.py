@@ -1,19 +1,19 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import os.path
 import math
 import tensorflow as tf
 
-N = 4000
+N = 10000
 INPUT_SIZE = 2
 LABELS = 2
-BATCH_SIZE = 10
-HIDDEN_CELLS_1 = 10
-HIDDEN_CELLS_2 = 10
 SPLIT = [0.7, 0.2, 0.1]
-LR = 0.1
 
-training_epochs = 1000
-display_step = 1
+batch_size = 10
+hidden_cells_1 = 10
+hidden_cells_2 = 10
+learning_rate = 0.5
+training_epochs = 100
+display_step = 2
 
 def generateGuassian(mean, theta, lambd, num):
 	u1 = np.array([[np.cos(theta)], [np.sin(theta)]])
@@ -86,7 +86,7 @@ def get_dataset(num):
 	return dataset, label
 
 def accuracy(pred, label):
-	return (np.sum(pred == label))
+	return (100.0 * np.sum(np.argmax(pred, 1) == np.argmax(label, 1)) / pred.shape[0])
 # ---------------------------------- data processing -------------------------------------
 raw_dataset, raw_label = get_dataset(N // 2)
 dataset, label = reformat_data(raw_dataset, raw_label)
@@ -106,68 +106,87 @@ Y = tf.placeholder(dtype = tf.float32, shape = [None, LABELS])
 
 
 # sess.run(***, feed_dict={input: **}).
-def add_layer(inputs, input_size, output_size, activation_function = None):
-	weights = tf.Variable(tf.random_normal([input_size, output_size]))
-	biases = tf.Variable(tf.random_normal([output_size]))
-	fccd = tf.matmul(inputs, weights) + biases
-	if activation_function is None:
-		outputs = fccd
-	else:
-		outputs = activation_function(fccd)
-	return outputs
+def init_variables_1_hidden_layer(input_size, num_labels, num_hidden1):
 
-# add hidden layer1
-hidden_l = add_layer(X, INPUT_SIZE, HIDDEN_CELLS_1, activation_function = tf.nn.relu)
-# add hidden layer2
-# l2 = add_layer(l1, HIDDEN_CELLS_1, HIDDEN_CELLS_2)
-# add output layer
-output_l = add_layer(hidden_l, HIDDEN_CELLS_1, LABELS, activation_function = tf.nn.sigmoid)
-loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits = output_l, labels = Y))
-optimizer = tf.train.GradientDescentOptimizer(learning_rate= LR).minimize(loss)
- 
-sess = tf.Session()
-init = tf.global_variables_initializer()
+	# hidden layer 1
+	w1 = tf.Variable(tf.truncated_normal([input_size, num_hidden1], stddev=0.1))
+	b1 = tf.Variable(tf.constant(1.0, shape = [num_hidden1]))
+	
+	# output layer
+	w2 = tf.Variable(tf.truncated_normal([num_hidden1, num_labels], stddev=0.1))
+	b2 = tf.Variable(tf.constant(1.0, shape = [num_labels]))
 
+	variables = {
+		'w1': w1, 'w2': w2,
+		'b1': b1, 'b2': b2
+	}
+	return variables
 
-with tf.Session() as sess:
-	sess.run(init)
+def model_1_hidden_layer(data, variables):
+
+	layer1_fccd = tf.matmul(data, variables['w1']) + variables['b1']
+	layer1_actv = tf.nn.relu(layer1_fccd)
+
+	layer2_fccd = tf.matmul(layer1_actv, variables['w2']) + variables['b2']
+	logits = tf.nn.sigmoid(layer2_fccd)
+
+	return logits
+
+# save_path = '/Users/yankong/Documents/Tensorflow/ECE283_HW2/'
+# name = os.path.join(save_path, 'result.txt')
+# file = open(name, 'w')
+
+graph = tf.Graph()
+
+# for learning_rate in LR:
+# 	for batch_size in BATCH_SIZE:
+# 		for hidden_cells_1 in HIDDEN_CELLS_1:
+# 			for training_epochs in TRAINING_EPOCHS:
+print('Learning Rate = {:03f}, Batch Size = {:d}, Cells for hidden layer1: {:d}, Training epochs:{:d} '.format(learning_rate, batch_size, hidden_cells_1, training_epochs))
+# file.write('Learning Rate = {:03f}, Batch Size = {:d}, Cells for hidden layer1: {:d}, Training epochs:{:d} '.format(learning_rate, batch_size, hidden_cells_1, training_epochs))
+with graph.as_default():
+	tf_train_dataset = tf.placeholder(tf.float32, shape = (batch_size, INPUT_SIZE))
+	tf_train_label = tf.placeholder(tf.float32, shape = (batch_size, LABELS))
+	tf_validation_dataset = tf.constant(validation_set, tf.float32)
+	tf_test_dataset = tf.constant(test_set, tf.float32)
+	# initilization of weight and bias
+	variables = init_variables_1_hidden_layer(INPUT_SIZE, LABELS, hidden_cells_1)
+	# initialize model
+	logits = model_1_hidden_layer(tf_train_dataset, variables)
+	# loss
+	loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits = logits, labels = tf_train_label))
+	# optimizer
+	optimizer = tf.train.GradientDescentOptimizer(learning_rate = learning_rate).minimize(loss)
+	# prediction for training and test data
+	train_pred = logits
+
+	validation_pred = model_1_hidden_layer(tf_validation_dataset, variables)
+	test_pred = model_1_hidden_layer(tf_test_dataset, variables)
+
+with tf.Session(graph = graph) as session:
+	tf.global_variables_initializer().run()
 	for epoch in range(training_epochs):
 		avg_cost = 0.0
-		total_batch = len(training_set) // BATCH_SIZE
+		total_batch = int(len(training_set) / batch_size)
 		X_batches = np.array_split(training_set, total_batch)
 		Y_batches = np.array_split(training_label, total_batch)
-		# Loop over all batches
+		print('-------------------------- epoch {:04d} --------------------------'.format(epoch))
 		for i in range(total_batch):
-			batch_x, batch_y = X_batches[i], Y_batches[i]
-			# Run optimization op (backprop) and cost op (to get loss value)
-			_, pred,cost = sess.run([optimizer, output_l, loss], feed_dict={X: batch_x, Y: batch_y})
-			# Compute average loss
-			avg_cost += cost / total_batch
-			# Display logs per epoch step
-			correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(Y, 1))
-			# Calculate accuracy
-			accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-		if epoch % display_step == 0:
-			print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.5f}".format(avg_cost))
-	print("Optimization Finished!")
+			data, label = X_batches[i], Y_batches[i]
+			_, cost, pred = session.run([optimizer, loss, train_pred], feed_dict =  {tf_train_dataset: data, tf_train_label:label})
+			train_accuracy = accuracy(pred, label)
+			if i % display_step == 0:
+				print('step {:04d} : cost is {:.6f}, accuracy on training set {:02.1f} %'.format(i, cost, train_accuracy))
+	print('Training Finished!')
 
-# for step in range(steps):
-# 	offset = (step * BATCH_SIZE) % (training_label.shape[0] - BATCH_SIZE)
-# 	data = training_set[offset:(offset + BATCH_SIZE), :]
-# 	label = training_label[offset:(offset + BATCH_SIZE)]
-# 	# print('label',label)
-# 	_, cost = sess.run([optimizer, loss], feed_dict = {X: data, Y: label})
-	
-# 	# train_accuracy = accuracy(pred, label)
-# 	if step % 2 == 0:
-# 		summary = "step {:04d} : loss is {:f}".format(step, cost)
-# 		print(summary)
+	validation_accuracy = accuracy(validation_pred.eval(), validation_label)
+
+	test_accuracy = accuracy(test_pred.eval(), test_label)
+	print('Validation set Accuracy:', validation_accuracy)
+	print('Test set Accuracy:', test_accuracy)
 
 
+	# file.write('Accuracy of Validation set: ' + str(validation_accuracy) + '\n')
 
-
-
-
-
-
+#file.close()
 
