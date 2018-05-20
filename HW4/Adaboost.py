@@ -11,7 +11,7 @@ class Adaboost():
     def __init__(self, iters = 10000, thres = 0.01):
         # weak learn for every iteration
         self.clfs = []
-        self.min_error = float('inf')
+        self.min_error = 0
         self.iters = iters
         self.thres = thres
         self.M = 0
@@ -24,9 +24,13 @@ class Adaboost():
         for i in range(self.iters):
             clf = DecisionStump()
             self.find_decision_stump(X, y, w, clf)
-            if not self.inclfs(clf):
-                # calculate alpha and pred to update weights
-                # 1e-10 to prevent min_error = 0
+            #print(clf.polarity, clf.threshold, clf.feature_index)
+            # if not self.inclfs(clf):
+            # calculate alpha and pred to update weights
+            # 1e-10 to prevent min_error = 0
+            if clf.feature_index == None:
+                break
+            else:
                 pred = np.ones(n_samples)
                 pred[clf.polarity * X[:, clf.feature_index] < clf.polarity * clf.threshold] = -1
                 # update weights
@@ -35,14 +39,42 @@ class Adaboost():
                 w /= np.sum(w)
                 self.clfs.append(clf)
                 self.M += 1
-            else:
-                i -= 1
+            # else:
+            #     i -= 1
             
             if self.min_error < self.thres:
                 self.M = len(self.clfs)
                 break
 
         return self
+
+    def find_decision_stump(self, X, y, w, clf, num_step = 50):
+        n_samples, n_features = np.shape(X)
+        min_error = float('inf')
+        for feature_i in range(n_features):
+            min_val = X[:, feature_i].min()
+            max_val = X[:, feature_i].max()
+            step = (max_val - min_val) / num_step
+            values = np.arange(min_val, max_val + step, step = step)
+            # find the threshold, that has the minimum error
+            for thres in values:
+                p = 1
+                pred = np.ones(n_samples)
+                pred[X[:, feature_i] < thres] = 0
+                error = sum(w[y != pred])
+
+                # if error > 0.5, reverse it, X[:, feature_i > thres]
+                if(error > 0.5):
+                    error = 1 - error
+                    p = -1
+
+                if error < min_error and error > self.min_error:
+                    clf.polarity = p 
+                    clf.threshold = thres
+                    clf.feature_index = feature_i
+                    min_error = error
+        self.min_error = min_error
+        clf.alpha = 0.5 * math.log((1.0 - self.min_error) / (self.min_error + 1e-10))
 
     def predict(self, X, clfs = None):
         n_samples = np.shape(X)[0]
@@ -76,32 +108,6 @@ class Adaboost():
                 return True
         return False
 
-    def find_decision_stump(self, X, y, w, clf, num_step = 50):
-        n_samples, n_features = np.shape(X)
-        min_error = float('inf')
-        for feature_i in range(n_features):
-            min_val = X[:, feature_i].min()
-            max_val = X[:, feature_i].max()
-            step = (max_val - min_val) / num_step
-            values = np.arange(min_val, max_val + step, step = step)
-            # find the threshold, that has the minimum error
-            for thres in values:
-                p = 1
-                pred = np.ones(n_samples)
-                pred[X[:, feature_i] < thres] = 0
-                error = sum(w[y != pred])
 
-                # if error > 0.5, reverse it, X[:, feature_i > thres]
-                if(error > 0.5):
-                    error = 1 - error
-                    p = -1
-
-                if error < min_error:
-                    clf.polarity = p 
-                    clf.threshold = thres
-                    clf.feature_index = feature_i
-                    min_error = error
-        self.min_error = min_error
-        clf.alpha = 0.5 * math.log((1.0 - self.min_error) / (self.min_error + 1e-10))
     
 

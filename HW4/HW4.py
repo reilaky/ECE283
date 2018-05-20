@@ -60,31 +60,32 @@ def gaussian_kernel(X1, X2, sigma=0.1):
 
 
 n = N // 2
-n_test = N_TEST // 2
+n_test0 = np.random.randint(N_TEST)
+n_test1 = N_TEST - n_test0
 # for Class0
 mean = [0, 0]
 theta = 0
 lambd = [2, 1]
 sample0, cov = generateGuassian(mean, theta, lambd, n)
-test0, cov = generateGuassian(mean, theta, lambd, n_test)
+test0, cov = generateGuassian(mean, theta, lambd, n_test0)
 print('Class0 cov = \n', cov)
 label0 = np.full(n, 0)
 
 # for Class1
-meanA = [-4, 2]
+meanA = [-2, 1]
 piA = 1 / 3
 thetaA = - np.pi * 3 / 4
 lambdaA = [2, 1/4]
 sample1A, covA = generateGuassian(meanA, thetaA, lambdaA, round(n * piA))
-test1A, covA = generateGuassian(meanA, thetaA, lambdaA, round(n_test * piA))
+test1A, covA = generateGuassian(meanA, thetaA, lambdaA, round(n_test1 * piA))
 print('Class1 covA = \n', covA)
 
-meanB = [6, 4]
+meanB = [3, 2]
 piB = 2 / 3
 thetaB = np.pi / 4
 lambdaB = [3, 1]
 sample1B, covB = generateGuassian(meanB, thetaB, lambdaB, round(n * piB))
-test1B, covB = generateGuassian(meanB, thetaB, lambdaB, round(n_test * piB))
+test1B, covB = generateGuassian(meanB, thetaB, lambdaB, round(n_test1 * piB))
 print('Class1 covB = \n', covB)
 sample1 = np.concatenate((sample1A, sample1B), axis = 0)
 test1 = np.concatenate((test1A, test1B), axis = 0)
@@ -96,7 +97,7 @@ raw_label = np.concatenate((label0, label1), axis = 0)
 dataset, label = randomize(raw_dataset, raw_label)
 
 testset = np.concatenate((test0, test1), axis = 0)
-test_label = np.concatenate((np.full(n_test, 0), np.full(n_test, 1)), axis = 0)
+test_label = np.concatenate((np.full(n_test0, 0), np.full(n_test1, 1)), axis = 0)
 
 
 # SVM
@@ -113,7 +114,7 @@ clf.fit(dataset, label)
 # (test, dataset)
 support_vectors = clf.support_vectors_
 print('Support vectors:')
-print(support_vectors)
+# print(support_vectors)
 print('Size of support vectors:', np.shape(support_vectors))
 print('Fraction of support vectors', float(support_vectors.shape[0] / N) * 100, '%')
 # for trainingset
@@ -149,7 +150,7 @@ plt.subplot(1, 2, 1)
 plt.title('Training set')
 plot_dataset(dataset, label)
 
-clf = Adaboost(iters = 5000, thres = 0.05)
+clf = Adaboost(iters = 10000, thres = 0.05)
 clf.fit(dataset, label)
 # for training set
 pred = clf.predict(dataset)
