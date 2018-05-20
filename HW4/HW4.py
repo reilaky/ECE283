@@ -100,11 +100,10 @@ testset = np.concatenate((test0, test1), axis = 0)
 test_label = np.concatenate((np.full(n_test, 0), np.full(n_test, 1)), axis = 0)
 
 
-
 # SVM
 plt.figure(figsize = (20, 30))
 plt.subplot(2, 2, 1)
-plt.title('SVM')
+plt.title('Training set')
 plot_dataset(dataset, label)
 print('---------------------------------- SVM ----------------------------------')
 sigma = 0.3
@@ -122,15 +121,22 @@ print('Fraction of support vectors', float(support_vectors.shape[0] / N) * 100, 
 
 print('\nFor training set:')
 plt.subplot(2, 2, 2)
-plt.title('Training set')
+plt.title('SVM')
 plot_dataset(dataset, label)
+
 pred = clf.predict(dataset)
 plot_decisionboundary(clf, dataset, pred, label)
+# plot support vector
+plt.scatter(support_vectors[:, 0], support_vectors[:, 1], s = 16, c = 'black', marker = '+', label = 'Support vectors')
 
 # for testset
 print('\nFor testset: ')
 plt.subplot(2, 2, 3)
 plt.title('Testset')
+plot_dataset(testset, test_label)
+
+plt.subplot(2, 2, 4)
+plt.title('SVM')
 pred = clf.predict(testset)
 plot_decisionboundary(clf, testset, pred, test_label)
 
@@ -138,9 +144,9 @@ plot_decisionboundary(clf, testset, pred, test_label)
 # Adaboost
 print('---------------------------------- Adaboost ----------------------------------')
 plt.figure(figsize = (20, 30))
-plt.title('Adaboost')
 
 plt.subplot(1, 2, 1)
+plt.title('Training set')
 plot_dataset(dataset, label)
 
 clf = Adaboost(iters = 5000, thres = 0.05)
@@ -149,7 +155,7 @@ clf.fit(dataset, label)
 pred = clf.predict(dataset)
 
 plt.subplot(1, 2, 2)
-plt.title('Training set')
+plt.title('Adaboost')
 plot_decisionboundary(clf, dataset, pred, label)
 
 num = 5
@@ -163,7 +169,7 @@ for i in range(num):
 
 # for test set
 plt.figure(figsize = (20, 30))
-plt.title('Adaboost')
+plt.title('Testset')
 first_n_weak_learners = []
 for i in range(num):
     title = 'No.' + str(i + 1) + ' weak learner'

@@ -49,6 +49,7 @@ class Adaboost():
         y_pred = np.zeros((n_samples, 1))
         # For each classifier => label the samples
         if clfs == None:
+            # print('all tetsbfbhrbfjhbehrjbjre')
             for clf in self.clfs:
                 # Set all predictions to '1' initially
                 predictions = np.ones(np.shape(y_pred))
