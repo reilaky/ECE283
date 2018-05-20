@@ -47,7 +47,6 @@ def plot_decisionboundary(model, X, pred, label, clfs = None):
     print('Incorrect prob:', float(indexs.shape[1] / X.shape[0]) * 100, '%')
     plt.scatter(X[indexs, 0], X[indexs, 1], s=16, facecolors='none', edgecolors='k', label = 'Incorrect prediction')
     plt.legend(loc = 'upper left')
-
 # Define kernels
 def gaussian_kernel(X1, X2, sigma=0.1):
     gram_matrix = np.zeros((X1.shape[0], X2.shape[0]))
@@ -128,6 +127,7 @@ pred = clf.predict(dataset)
 plot_decisionboundary(clf, dataset, pred, label)
 # plot support vector
 plt.scatter(support_vectors[:, 0], support_vectors[:, 1], s = 16, c = 'black', marker = '+', label = 'Support vectors')
+plt.legend(loc = 'upper left')
 
 # for testset
 print('\nFor testset: ')
@@ -173,7 +173,7 @@ plt.title('Testset')
 first_n_weak_learners = []
 for i in range(num):
     title = 'No.' + str(i + 1) + ' weak learner'
-    plt.subplot(2, 4, i+1)
+    plt.subplot(2, 3, i+1)
     plt.title(title)
     print('For', title + ':')
     
@@ -181,15 +181,16 @@ for i in range(num):
     plot_decisionboundary(clf, testset, pred, test_label, [clf.clfs[i]])
     first_n_weak_learners.append(clf.clfs[i])
 
+plt.figure(figsize = (20, 30))
+plt.subplot(1, 2, 1)
 title = 'First five weak learners'
-plt.subplot(2, 4, 6)
 plt.title(title)
 print('For', title + ':')
 pred = clf.predict(testset, first_n_weak_learners)
 plot_decisionboundary(clf, testset, pred, test_label, first_n_weak_learners)
 
 title = 'All weak learners'
-plt.subplot(2, 4, 7)
+plt.subplot(1, 2, 2)
 plt.title(title)
 print('For', title + ':')
 pred = clf.predict(testset)
